@@ -1,6 +1,9 @@
 using Microsoft.AspNetCore.Authentication;
-using Microsoft.Extensions.Options; // For Options validation
+using Microsoft.AspNetCore.Diagnostics;
+using Microsoft.AspNetCore.Mvc;
+using Microsoft.Extensions.Options;
 using TmsApi;
+using Scalar.AspNetCore;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -22,7 +25,7 @@ builder.Services
 // 2. Add Authorization Services
 builder.Services.AddAuthorization();
 
-// 3. Add Controllers (if you need them later)
+// 3. Add Controllers
 builder.Services.AddControllers();
 
 // 4. Register PaymentOptions with validation
@@ -32,8 +35,8 @@ builder.Services.AddOptions<PaymentOptions>()
     .ValidateOnStart();
 
 // 5. Register Services
-builder.Services.AddSingleton<EnrollmentWorker>();     // Singleton
-builder.Services.AddScoped<IEnrollmentService, EnrollmentService>();  // Scoped
+builder.Services.AddSingleton<EnrollmentWorker>();
+builder.Services.AddScoped<IEnrollmentService, EnrollmentService>();
 
 var app = builder.Build();
 
@@ -42,8 +45,9 @@ var app = builder.Build();
 // First: Logging middleware (wraps everything)
 app.UseMiddleware<RequestLoggingMiddleware>();
 
-// Second: Exception handling (catch errors early)
+// Second: Exception handling - Use the built-in ProblemDetails
 app.UseExceptionHandler();
+app.UseStatusCodePages();
 
 // Third: HTTPS redirection
 app.UseHttpsRedirection();
@@ -57,7 +61,14 @@ app.UseAuthentication();
 // Sixth: Authorization (are you allowed?)
 app.UseAuthorization();
 
-// 7. ENDPOINTS
+// 7. ENVIRONMENT-AWARE ENDPOINTS
+if (app.Environment.IsDevelopment())
+{
+    app.MapOpenApi();
+    app.MapScalarApiReference();
+}
+
+// 8. APPLICATION ENDPOINTS
 
 // Protected endpoint - requires authentication
 app.MapGet("/api/assessments/results", () =>
@@ -81,20 +92,20 @@ app.MapGet("/api/enrollments/worker-smoke", (EnrollmentWorker worker) =>
 // Test endpoint for Exercise 4 - structured logging test
 app.MapPost("/api/enrollments/test", async (IEnrollmentService service) =>
 {
-    // Test duplicate detection
     await service.EnrollAsync("S-TEST-001", "CS-101");
-    await service.EnrollAsync("S-TEST-001", "CS-101"); // This should trigger the duplicate warning
-    
-    // Test GetById not found
+    await service.EnrollAsync("S-TEST-001", "CS-101");
     await service.GetByIdAsync("nonexistent");
-    
-    // Test Delete not found
     await service.DeleteAsync("nonexistent");
-    
     return Results.Ok("Logs generated - check your terminal");
 });
 
-// Map controllers (if you have any)
+// Test endpoint for ProblemDetails (MUST BE BEFORE MapControllers OR handled by controller)
+app.MapGet("/api/error", () =>
+{
+    throw new TmsDatabaseException("Simulated database failure for ProblemDetails testing");
+});
+
+// Map controllers - THIS SHOULD BE LAST
 app.MapControllers();
 
 app.Run();
