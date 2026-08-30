@@ -6,11 +6,16 @@ C:\Users\Hp\Documents\collection\TmsApi\bin\Debug\net10.0\TmsApi.deps.json
 C:\Users\Hp\Documents\collection\TmsApi\bin\Debug\net10.0\TmsApi.runtimeconfig.json
 C:\Users\Hp\Documents\collection\TmsApi\bin\Debug\net10.0\TmsApi.dll
 C:\Users\Hp\Documents\collection\TmsApi\bin\Debug\net10.0\TmsApi.pdb
+C:\Users\Hp\Documents\collection\TmsApi\bin\Debug\net10.0\Microsoft.AspNetCore.OpenApi.dll
+C:\Users\Hp\Documents\collection\TmsApi\bin\Debug\net10.0\Microsoft.OpenApi.dll
+C:\Users\Hp\Documents\collection\TmsApi\bin\Debug\net10.0\Scalar.AspNetCore.dll
+C:\Users\Hp\Documents\collection\TmsApi\obj\Debug\net10.0\TmsApi.csproj.AssemblyReference.cache
 C:\Users\Hp\Documents\collection\TmsApi\obj\Debug\net10.0\rpswa.dswa.cache.json
 C:\Users\Hp\Documents\collection\TmsApi\obj\Debug\net10.0\TmsApi.GeneratedMSBuildEditorConfig.editorconfig
 C:\Users\Hp\Documents\collection\TmsApi\obj\Debug\net10.0\TmsApi.AssemblyInfoInputs.cache
 C:\Users\Hp\Documents\collection\TmsApi\obj\Debug\net10.0\TmsApi.AssemblyInfo.cs
 C:\Users\Hp\Documents\collection\TmsApi\obj\Debug\net10.0\TmsApi.csproj.CoreCompileInputs.cache
+C:\Users\Hp\Documents\collection\TmsApi\obj\Debug\net10.0\TmsApi.MvcApplicationPartsAssemblyInfo.cs
 C:\Users\Hp\Documents\collection\TmsApi\obj\Debug\net10.0\TmsApi.MvcApplicationPartsAssemblyInfo.cache
 C:\Users\Hp\Documents\collection\TmsApi\obj\Debug\net10.0\TmsApi.sourcelink.json
 C:\Users\Hp\Documents\collection\TmsApi\obj\Debug\net10.0\rjimswa.dswa.cache.json
@@ -22,6 +27,7 @@ C:\Users\Hp\Documents\collection\TmsApi\obj\Debug\net10.0\staticwebassets.build.
 C:\Users\Hp\Documents\collection\TmsApi\obj\Debug\net10.0\staticwebassets.development.json
 C:\Users\Hp\Documents\collection\TmsApi\obj\Debug\net10.0\staticwebassets.build.endpoints.json
 C:\Users\Hp\Documents\collection\TmsApi\obj\Debug\net10.0\swae.build.ex.cache
+C:\Users\Hp\Documents\collection\TmsApi\obj\Debug\net10.0\TmsApi.csproj.Up2Date
 C:\Users\Hp\Documents\collection\TmsApi\obj\Debug\net10.0\TmsApi.dll
 C:\Users\Hp\Documents\collection\TmsApi\obj\Debug\net10.0\refint\TmsApi.dll
 C:\Users\Hp\Documents\collection\TmsApi\obj\Debug\net10.0\TmsApi.pdb
