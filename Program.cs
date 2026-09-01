@@ -7,6 +7,7 @@ using TmsApi;
 using TmsApi.Data;
 using TmsApi.Entities;
 using Scalar.AspNetCore;
+using TmsApi.Filters;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -54,6 +55,11 @@ builder.Services.AddDbContext<TmsDbContext>(options =>
     {
         dbContextOptions.EnableSensitiveDataLogging();
     }
+});
+
+builder.Services.AddControllers(options =>
+{
+    options.Filters.Add<AuditLogFilter>();
 });
 
 var app = builder.Build();
@@ -173,5 +179,12 @@ app.MapGet("/api/error", () =>
 
 // Map controllers - THIS SHOULD BE LAST
 app.MapControllers();
+
+if (app.Environment.IsDevelopment())
+{
+    using var scope = app.Services.CreateScope();
+    var context = scope.ServiceProvider.GetRequiredService<TmsDbContext>();
+    DataSeeder.SeedAsync(context).Wait();
+}
 
 app.Run();
