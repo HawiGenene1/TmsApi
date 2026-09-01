@@ -1,5 +1,5 @@
 using Microsoft.AspNetCore.Mvc;
-using TmsApi.Data;
+using TmsApi.Infrastructure.Persistence;
 
 namespace TmsApi.Controllers;
 

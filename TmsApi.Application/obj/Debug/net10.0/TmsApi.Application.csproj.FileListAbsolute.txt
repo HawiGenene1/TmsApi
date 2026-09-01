@@ -1,0 +1,16 @@
+C:\Users\Hp\Documents\collection\TmsApi\TmsApi.Application\bin\Debug\net10.0\TmsApi.Application.deps.json
+C:\Users\Hp\Documents\collection\TmsApi\TmsApi.Application\bin\Debug\net10.0\TmsApi.Application.dll
+C:\Users\Hp\Documents\collection\TmsApi\TmsApi.Application\bin\Debug\net10.0\TmsApi.Application.pdb
+C:\Users\Hp\Documents\collection\TmsApi\TmsApi.Application\bin\Debug\net10.0\TmsApi.Domain.dll
+C:\Users\Hp\Documents\collection\TmsApi\TmsApi.Application\bin\Debug\net10.0\TmsApi.Domain.pdb
+C:\Users\Hp\Documents\collection\TmsApi\TmsApi.Application\obj\Debug\net10.0\TmsApi.Application.csproj.AssemblyReference.cache
+C:\Users\Hp\Documents\collection\TmsApi\TmsApi.Application\obj\Debug\net10.0\TmsApi.Application.GeneratedMSBuildEditorConfig.editorconfig
+C:\Users\Hp\Documents\collection\TmsApi\TmsApi.Application\obj\Debug\net10.0\TmsApi.Application.AssemblyInfoInputs.cache
+C:\Users\Hp\Documents\collection\TmsApi\TmsApi.Application\obj\Debug\net10.0\TmsApi.Application.AssemblyInfo.cs
+C:\Users\Hp\Documents\collection\TmsApi\TmsApi.Application\obj\Debug\net10.0\TmsApi.Application.csproj.CoreCompileInputs.cache
+C:\Users\Hp\Documents\collection\TmsApi\TmsApi.Application\obj\Debug\net10.0\TmsApi.Application.sourcelink.json
+C:\Users\Hp\Documents\collection\TmsApi\TmsApi.Application\obj\Debug\net10.0\TmsApi.A.8F6B91CF.Up2Date
+C:\Users\Hp\Documents\collection\TmsApi\TmsApi.Application\obj\Debug\net10.0\TmsApi.Application.dll
+C:\Users\Hp\Documents\collection\TmsApi\TmsApi.Application\obj\Debug\net10.0\refint\TmsApi.Application.dll
+C:\Users\Hp\Documents\collection\TmsApi\TmsApi.Application\obj\Debug\net10.0\TmsApi.Application.pdb
+C:\Users\Hp\Documents\collection\TmsApi\TmsApi.Application\obj\Debug\net10.0\ref\TmsApi.Application.dll
