@@ -43,9 +43,15 @@ builder.Services.AddScoped<IEnrollmentService, EnrollmentService>();
 
 // Register TmsDbContext
 builder.Services.AddDbContext<TmsDbContext>(options =>
-    options.UseNpgsql(builder.Configuration.GetConnectionString("TmsDatabase"))
-        .LogTo(Console.WriteLine, LogLevel.Information)
-        .EnableSensitiveDataLogging());
+{
+    var dbContextOptions = options.UseNpgsql(builder.Configuration.GetConnectionString("TmsDatabase"))
+        .LogTo(Console.WriteLine, LogLevel.Information);
+
+    if (builder.Environment.IsDevelopment())
+    {
+        dbContextOptions.EnableSensitiveDataLogging();
+    }
+});
 
 var app = builder.Build();
 
