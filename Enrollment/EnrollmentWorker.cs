@@ -12,7 +12,7 @@ public class EnrollmentWorker
     public void ProcessBatch()
     {
         using var scope = _scopeFactory.CreateScope();
-        var enrollmentService = scope.ServiceProvider.GetRequiredService<IEnrollmentService>();
+        var enrollmentService = scope.ServiceProvider.GetRequiredService<IInMemoryEnrollmentService>();
         
         enrollmentService.EnrollAsync("BATCH-001", "CS-101");
         enrollmentService.EnrollAsync("BATCH-002", "CS-102");

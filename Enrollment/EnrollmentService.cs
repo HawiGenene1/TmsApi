@@ -1,6 +1,6 @@
 namespace TmsApi;
 
-public interface IEnrollmentService
+public interface IInMemoryEnrollmentService
 {
     Task<EnrollmentRecord> EnrollAsync(string studentId, string courseCode);
     Task<EnrollmentRecord?> GetByIdAsync(string id);
@@ -8,12 +8,12 @@ public interface IEnrollmentService
     Task<bool> DeleteAsync(string id);
 }
 
-public class EnrollmentService : IEnrollmentService
+public class InMemoryEnrollmentService : IInMemoryEnrollmentService
 {
     private readonly Dictionary<string, EnrollmentRecord> _store = new();
-    private readonly ILogger<EnrollmentService> _logger;
+    private readonly ILogger<InMemoryEnrollmentService> _logger;
 
-    public EnrollmentService(ILogger<EnrollmentService> logger)
+    public InMemoryEnrollmentService(ILogger<InMemoryEnrollmentService> logger)
     {
         _logger = logger;
     }
