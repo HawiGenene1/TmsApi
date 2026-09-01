@@ -44,6 +44,20 @@ public class EnrollmentService : IEnrollmentService
             .ToListAsync(ct);
     }
 
+    public async Task<IReadOnlyList<EnrollmentResponseDto>> GetByStudentAsync(int studentId, CancellationToken ct)
+    {
+        return await _context.Enrollments
+            .AsNoTracking()
+            .Where(e => e.StudentId == studentId)
+            .OrderByDescending(e => e.EnrolledAt)
+            .Select(e => new EnrollmentResponseDto(
+                e.Id,
+                e.CourseId,
+                e.StudentId,
+                e.EnrolledAt))
+            .ToListAsync(ct);
+    }
+
     public async Task<EnrollmentResponseDto> CreateAsync(int courseId, EnrollStudentRequest request, CancellationToken ct)
     {
         var enrollment = new Enrollment
@@ -60,6 +74,21 @@ public class EnrollmentService : IEnrollmentService
             request.StudentId, courseId);
 
         return (await GetByIdAsync(courseId, enrollment.Id, ct))!;
+    }
+
+    public async Task<bool> ExistsAsync(int studentId, string courseCode, CancellationToken ct)
+    {
+        return await _context.Enrollments
+            .AnyAsync(e => e.StudentId == studentId && e.Course.Code == courseCode, ct);
+    }
+
+    public async Task AddAsync(Enrollment enrollment, CancellationToken ct)
+    {
+        _context.Enrollments.Add(enrollment);
+        await _context.SaveChangesAsync(ct);
+
+        _logger.LogInformation("Enrolled student {StudentId} in course {CourseId}",
+            enrollment.StudentId, enrollment.CourseId);
     }
 
     public async Task<bool> DeleteAsync(int courseId, int id, CancellationToken ct)
