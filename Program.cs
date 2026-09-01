@@ -12,6 +12,7 @@ var builder = WebApplication.CreateBuilder(args);
 
 // ADD THIS - Required for UseExceptionHandler() to work in .NET 10
 builder.Services.AddProblemDetails();
+builder.Services.AddOpenApi();
 
 // Enable validation to catch captive dependencies
 builder.Host.UseDefaultServiceProvider(options => 
@@ -39,7 +40,9 @@ builder.Services.AddOptions<PaymentOptions>()
 
 // 5. Register Services
 builder.Services.AddSingleton<EnrollmentWorker>();
-builder.Services.AddScoped<IEnrollmentService, EnrollmentService>();
+builder.Services.AddScoped<IInMemoryEnrollmentService, InMemoryEnrollmentService>();
+builder.Services.AddScoped<TmsApi.Services.IEnrollmentService, TmsApi.Services.EnrollmentService>();
+builder.Services.AddScoped<TmsApi.Services.ICourseService, TmsApi.Services.CourseService>();
 
 // Register TmsDbContext
 builder.Services.AddDbContext<TmsDbContext>(options =>
@@ -76,6 +79,12 @@ app.UseAuthentication();
 // Sixth: Authorization (are you allowed?)
 app.UseAuthorization();
 
+if (app.Environment.IsDevelopment())
+{
+    app.MapOpenApi();
+    app.MapScalarApiReference();
+}
+
 // 7. ENVIRONMENT-AWARE ENDPOINTS
 if (app.Environment.IsDevelopment())
 {
@@ -105,7 +114,7 @@ app.MapGet("/api/enrollments/worker-smoke", (EnrollmentWorker worker) =>
 });
 
 // Test endpoint for Exercise 4 - structured logging test
-app.MapPost("/api/enrollments/test", async (IEnrollmentService service) =>
+app.MapPost("/api/enrollments/test", async (IInMemoryEnrollmentService service) =>
 {
     await service.EnrollAsync("S-TEST-001", "CS-101");
     await service.EnrollAsync("S-TEST-001", "CS-101");
@@ -135,9 +144,9 @@ using (var scope = app.Services.CreateScope())
 
         var courses = new List<Course>
         {
-            new() { Code = "CS-101", Title = "Introduction to Computer Science", Capacity = 30 },
-            new() { Code = "CS-201", Title = "Data Structures and Algorithms", Capacity = 25 },
-            new() { Code = "MAT-101", Title = "Calculus I", Capacity = 40 }
+            new() { Code = "CS-101", Title = "Introduction to Computer Science" },
+            new() { Code = "CS-201", Title = "Data Structures and Algorithms" },
+            new() { Code = "MAT-101", Title = "Calculus I" }
         };
         context.Courses.AddRange(courses);  // AddRange accepts a list
 
