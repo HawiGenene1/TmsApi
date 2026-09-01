@@ -129,3 +129,14 @@ C:\Users\Hp\Documents\collection\TmsApi\TmsApi.Api\obj\Debug\net10.0\ref\TmsApi.
 C:\Users\Hp\Documents\collection\TmsApi\TmsApi.Api\bin\Debug\net10.0\appsettings.Development.json
 C:\Users\Hp\Documents\collection\TmsApi\TmsApi.Api\bin\Debug\net10.0\appsettings.json
 C:\Users\Hp\Documents\collection\TmsApi\TmsApi.Api\bin\Debug\net10.0\FluentValidation.dll
+C:\Users\Hp\Documents\collection\TmsApi\TmsApi.Api\bin\Debug\net10.0\Asp.Versioning.Abstractions.dll
+C:\Users\Hp\Documents\collection\TmsApi\TmsApi.Api\bin\Debug\net10.0\Asp.Versioning.Http.dll
+C:\Users\Hp\Documents\collection\TmsApi\TmsApi.Api\bin\Debug\net10.0\Asp.Versioning.Mvc.dll
+C:\Users\Hp\Documents\collection\TmsApi\TmsApi.Api\bin\Debug\net10.0\Asp.Versioning.Mvc.ApiExplorer.dll
+C:\Users\Hp\Documents\collection\TmsApi\TmsApi.Api\bin\Debug\net10.0\FluentValidation.DependencyInjectionExtensions.dll
+C:\Users\Hp\Documents\collection\TmsApi\TmsApi.Api\bin\Debug\net10.0\MediatR.dll
+C:\Users\Hp\Documents\collection\TmsApi\TmsApi.Api\bin\Debug\net10.0\MediatR.Contracts.dll
+C:\Users\Hp\Documents\collection\TmsApi\TmsApi.Api\bin\Debug\net10.0\Microsoft.IdentityModel.Abstractions.dll
+C:\Users\Hp\Documents\collection\TmsApi\TmsApi.Api\bin\Debug\net10.0\Microsoft.IdentityModel.JsonWebTokens.dll
+C:\Users\Hp\Documents\collection\TmsApi\TmsApi.Api\bin\Debug\net10.0\Microsoft.IdentityModel.Logging.dll
+C:\Users\Hp\Documents\collection\TmsApi\TmsApi.Api\bin\Debug\net10.0\Microsoft.IdentityModel.Tokens.dll
