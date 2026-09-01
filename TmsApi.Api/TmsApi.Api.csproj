@@ -1,0 +1,41 @@
+<Project Sdk="Microsoft.NET.Sdk.Web">
+
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Microsoft.AspNetCore.OpenApi" Version="10.0.11" />
+    <PackageReference Include="Microsoft.EntityFrameworkCore.Design" Version="10.0.11">
+      <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
+      <PrivateAssets>all</PrivateAssets>
+    </PackageReference>
+    <PackageReference Include="Microsoft.EntityFrameworkCore.Tools" Version="10.0.11">
+      <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
+      <PrivateAssets>all</PrivateAssets>
+    </PackageReference>
+    <PackageReference Include="Npgsql.EntityFrameworkCore.PostgreSQL" Version="10.0.3" />
+    <PackageReference Include="Scalar.AspNetCore" Version="2.17.2" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\TmsApi.Application\TmsApi.Application.csproj" />
+    <ProjectReference Include="..\TmsApi.Infrastructure\TmsApi.Infrastructure.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Compile Include="..\*.cs" Exclude="..\Program.cs" />
+    <Compile Include="..\Controllers\**\*.cs" Link="Controllers\%(RecursiveDir)%(Filename)%(Extension)" />
+    <Compile Include="..\Data\**\*.cs" Link="Data\%(RecursiveDir)%(Filename)%(Extension)" />
+    <Compile Include="..\Dtos\**\*.cs" Link="Dtos\%(RecursiveDir)%(Filename)%(Extension)" />
+    <Compile Include="..\Enrollment\**\*.cs" Link="Enrollment\%(RecursiveDir)%(Filename)%(Extension)" />
+    <Compile Include="..\Entities\**\*.cs" Link="Entities\%(RecursiveDir)%(Filename)%(Extension)" />
+    <Compile Include="..\Exceptions\**\*.cs" Link="Exceptions\%(RecursiveDir)%(Filename)%(Extension)" />
+    <Compile Include="..\Filters\**\*.cs" Link="Filters\%(RecursiveDir)%(Filename)%(Extension)" />
+    <Compile Include="..\Migrations\**\*.cs" Link="Migrations\%(RecursiveDir)%(Filename)%(Extension)" />
+    <Compile Include="..\Services\**\*.cs" Link="Services\%(RecursiveDir)%(Filename)%(Extension)" />
+  </ItemGroup>
+
+</Project>
