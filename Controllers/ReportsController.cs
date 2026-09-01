@@ -8,50 +8,54 @@ namespace TmsApi.Controllers;
 [Route("api/reports")]
 public class ReportsController(TmsDbContext context) : ControllerBase
 {
-    // 1. How many active students have GPA >= 3.0?
-    [HttpGet("active-high-gpa-count")]
-    public async Task<IActionResult> GetActiveHighGpaCount()
+    // 1. Paged list of students (page size 20, stable sort by name)
+    [HttpGet("students-paged")]
+    public async Task<IActionResult> GetStudentsPaged(
+        [FromQuery] int page = 1, 
+        [FromQuery] int pageSize = 20,
+        CancellationToken cancellationToken = default)
     {
-        var count = await context.Students
-            .Where(s => s.IsActive && s.GPA >= 3.0m)
-            .CountAsync();
-        
-        return Ok(new { Count = count });
+        // Always OrderBy before Skip/Take for stable pagination
+        var students = await context.Students
+            .OrderBy(s => s.Name)  // Stable sort
+            .Skip((page - 1) * pageSize)
+            .Take(pageSize)
+            .Select(s => new
+            {
+                s.Id,
+                s.RegistrationNumber,
+                s.Name,
+                s.GPA,
+                s.IsActive
+            })
+            .ToListAsync(cancellationToken);
+
+        var totalCount = await context.Students.CountAsync(cancellationToken);
+
+        return Ok(new
+        {
+            Page = page,
+            PageSize = pageSize,
+            TotalCount = totalCount,
+            TotalPages = (int)Math.Ceiling(totalCount / (double)pageSize),
+            Data = students
+        });
     }
 
-    // 2. Which courses have the most enrollments, sorted descending?
-    [HttpGet("course-enrollment-counts")]
-    public async Task<IActionResult> GetCourseEnrollmentCounts()
+    // 2. Top 5 courses by enrollment count
+    [HttpGet("top-courses")]
+    public async Task<IActionResult> GetTopCourses(CancellationToken cancellationToken = default)
     {
-        var list = await context.Courses
-            .Select(c => new { c.Title, EnrollmentCount = c.Enrollments.Count })
+        var topCourses = await context.Courses
+            .Select(c => new
+            {
+                c.Title,
+                EnrollmentCount = c.Enrollments.Count
+            })
             .OrderByDescending(x => x.EnrollmentCount)
-            .ToListAsync();
-        
-        return Ok(list);
-    }
+            .Take(5)
+            .ToListAsync(cancellationToken);
 
-    // 3. What is the average GPA per course?
-    [HttpGet("average-gpa-per-course")]
-    public async Task<IActionResult> GetAverageGpaPerCourse()
-    {
-        var list = await context.Enrollments
-            .GroupBy(e => e.Course.Title)
-            .Select(g => new { Course = g.Key, AverageGPA = g.Average(e => e.Student.GPA) })
-            .ToListAsync();
-        
-        return Ok(list);
-    }
-
-    // 4. Which students have zero enrollments?
-    [HttpGet("students-with-no-enrollments")]
-    public async Task<IActionResult> GetStudentsWithNoEnrollments()
-    {
-        var list = await context.Students
-            .Where(s => !s.Enrollments.Any())
-            .Select(s => s.Name)
-            .ToListAsync();
-        
-        return Ok(list);
+        return Ok(topCourses);
     }
 }
