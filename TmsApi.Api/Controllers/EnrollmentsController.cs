@@ -55,7 +55,7 @@ public class EnrollmentsController : ControllerBase
         var course = await _courseService.GetByIdAsync(courseId, ct);
         if (course is null) return NotFound();
 
-        if (course.EnrollmentCount >= course.MaxCapacity)
+        if (course.Enrollments.Count >= course.MaxCapacity)
         {
             return Conflict(new ProblemDetails
             {

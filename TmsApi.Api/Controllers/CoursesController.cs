@@ -3,6 +3,7 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Routing;
 using TmsApi.Application.Dtos;
 using TmsApi.Application.Interfaces;
+using TmsApi.Domain.Entities;
 
 namespace TmsApi.Api.Controllers;
 
@@ -29,7 +30,19 @@ public class CoursesController : ControllerBase
     public async Task<IActionResult> GetCourses([FromQuery] PageRequest request,
         CancellationToken ct)
     {
-        var result = await _courseService.GetCoursesAsync(request, ct);
+        var courses = await _courseService.GetAllAsync(ct);
+        var items = courses
+            .Select(c => new CourseResponseDto(c.Id, c.Code, c.Title, c.MaxCapacity, c.Enrollments.Count))
+            .ToList();
+
+        var result = new PageResponse<CourseResponseDto>
+        {
+            Items = items,
+            TotalCount = items.Count,
+            Page = request.Page,
+            PageSize = request.PageSize
+        };
+
         return Ok(result);
     }
 
@@ -57,7 +70,7 @@ public class CoursesController : ControllerBase
             new { courseId = id });
         links.Add(new LinkDto(enrollmentsLink!, "enrollments", "GET"));
 
-        if (course.EnrollmentCount < course.MaxCapacity)
+        if (course.Enrollments.Count < course.MaxCapacity)
         {
             links.Add(new LinkDto(enrollmentsLink!, "enroll", "POST"));
         }
@@ -68,7 +81,7 @@ public class CoursesController : ControllerBase
             Code = course.Code,
             Title = course.Title,
             MaxCapacity = course.MaxCapacity,
-            EnrollmentCount = course.EnrollmentCount,
+            EnrollmentCount = course.Enrollments.Count,
             Links = links
         };
 
@@ -83,7 +96,7 @@ public class CoursesController : ControllerBase
     [EndpointDescription("Creates a course with a unique code. Returns 409 if the course code already exists.")]
     public async Task<IActionResult> CreateCourse([FromBody] CreateCourseRequest request, CancellationToken ct)
     {
-        if (await _courseService.CodeExistsAsync(request.Code, ct))
+        if (await _courseService.ExistsAsync(request.Code, ct))
         {
             return Conflict(new ProblemDetails
             {
@@ -93,7 +106,16 @@ public class CoursesController : ControllerBase
             });
         }
 
-        var result = await _courseService.CreateAsync(request, ct);
-        return CreatedAtAction(nameof(GetCourseById), new { id = result.Id }, result);
+        var course = new Course
+        {
+            Code = request.Code,
+            Title = request.Title,
+            MaxCapacity = request.MaxCapacity
+        };
+
+        await _courseService.AddAsync(course, ct);
+
+        var dto = new CourseResponseDto(course.Id, course.Code, course.Title, course.MaxCapacity, course.Enrollments.Count);
+        return CreatedAtAction(nameof(GetCourseById), new { id = course.Id }, dto);
     }
 }

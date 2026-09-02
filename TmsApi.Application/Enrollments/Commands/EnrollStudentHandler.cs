@@ -27,7 +27,7 @@ public class EnrollStudentHandler : IRequestHandler<EnrollStudentCommand, Result
                 EnrollmentError.CourseNotFound(command.CourseCode));
         }
 
-        if (course.EnrollmentCount >= course.MaxCapacity)
+        if (course.Enrollments.Count >= course.MaxCapacity)
         {
             return Result<EnrollmentCreated, EnrollmentError>.Failure(
                 EnrollmentError.CourseFull(course.Title, course.MaxCapacity));

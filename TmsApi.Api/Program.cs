@@ -2,9 +2,13 @@ using Asp.Versioning;
 using FluentValidation;
 using MediatR;
 using Microsoft.AspNetCore.Authentication;
+using Microsoft.AspNetCore.RateLimiting;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Caching.Hybrid;
 using Microsoft.Extensions.Options;
 using Scalar.AspNetCore;
+using System.Threading.RateLimiting;
+using TmsApi.Api.RateLimiting;
 using TmsApi;
 using TmsApi.Api.Handlers;
 using TmsApi.Api.Middleware;
@@ -14,6 +18,7 @@ using TmsApi.Application.Interfaces;
 using TmsApi.Domain.Entities;
 using TmsApi.Filters;
 using TmsApi.Infrastructure.Persistence;
+using TmsApi.Infrastructure.Services;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -63,6 +68,8 @@ builder.Services.AddAuthorization();
 builder.Services.AddMediatR(cfg =>
     cfg.RegisterServicesFromAssembly(typeof(EnrollStudentHandler).Assembly));
 
+builder.Services.AddHealthChecks();
+
 builder.Services.AddValidatorsFromAssembly(typeof(EnrollStudentValidator).Assembly);
 
 // Register pipeline behaviors (Logging FIRST, Validation SECOND)
@@ -87,6 +94,17 @@ builder.Services.AddSingleton<EnrollmentWorker>();
 builder.Services.AddScoped<IInMemoryEnrollmentService, InMemoryEnrollmentService>();
 builder.Services.AddScoped<IEnrollmentService, EnrollmentService>();
 builder.Services.AddScoped<ICourseService, CourseService>();
+builder.Services.AddScoped<ICachedCourseService, CachedCourseService>();
+
+// Add HybridCache
+builder.Services.AddHybridCache(options =>
+{
+    options.DefaultEntryOptions = new HybridCacheEntryOptions
+    {
+        Expiration = TimeSpan.FromMinutes(10),
+        LocalCacheExpiration = TimeSpan.FromMinutes(2)
+    };
+});
 
 // Register TmsDbContext
 builder.Services.AddDbContext<TmsDbContext>(options =>
@@ -105,6 +123,99 @@ builder.Services.AddControllers(options =>
     options.Filters.Add<AuditLogFilter>();
 });
 
+// Add Rate Limiting
+builder.Services.AddRateLimiter(options =>
+{
+    // Global limiter - tier-aware token bucket
+    options.GlobalLimiter = PartitionedRateLimiter.Create<HttpContext, string>(httpContext =>
+    {
+        var (partitionKey, tier) = ApiKeyResolver.Resolve(httpContext);
+
+        return tier switch
+        {
+            ApiKeyTier.Paid => RateLimitPartition.GetTokenBucketLimiter(
+                $"paid:{partitionKey}",
+                _ => new TokenBucketRateLimiterOptions
+                {
+                    TokenLimit = 200,
+                    TokensPerPeriod = 100,
+                    ReplenishmentPeriod = TimeSpan.FromSeconds(10),
+                    QueueLimit = 0,
+                    AutoReplenishment = true
+                }),
+            ApiKeyTier.Free => RateLimitPartition.GetTokenBucketLimiter(
+                $"free:{partitionKey}",
+                _ => new TokenBucketRateLimiterOptions
+                {
+                    TokenLimit = 50,
+                    TokensPerPeriod = 25,
+                    ReplenishmentPeriod = TimeSpan.FromSeconds(10),
+                    QueueLimit = 0,
+                    AutoReplenishment = true
+                }),
+            _ => RateLimitPartition.GetTokenBucketLimiter(
+                $"anon:{partitionKey}",
+                _ => new TokenBucketRateLimiterOptions
+                {
+                    TokenLimit = 10,
+                    TokensPerPeriod = 5,
+                    ReplenishmentPeriod = TimeSpan.FromSeconds(10),
+                    QueueLimit = 0,
+                    AutoReplenishment = true
+                })
+        };
+    });
+
+    // Concurrency limiter for transcript endpoint
+    options.AddConcurrencyLimiter("transcripts", opt =>
+    {
+        opt.PermitLimit = 5;
+        opt.QueueLimit = 20;
+        opt.QueueProcessingOrder = QueueProcessingOrder.OldestFirst;
+    });
+
+    // Token bucket for search endpoint
+    options.AddTokenBucketLimiter("search", opt =>
+    {
+        opt.TokenLimit = 10;
+        opt.TokensPerPeriod = 5;
+        opt.ReplenishmentPeriod = TimeSpan.FromSeconds(10);
+        opt.QueueLimit = 2;
+    });
+
+    // Custom rejection handler for ProblemDetails
+    options.OnRejected = async (context, cancellationToken) =>
+    {
+        var httpContext = context.HttpContext;
+        var lease = context.Lease;
+
+        httpContext.Response.StatusCode = StatusCodes.Status429TooManyRequests;
+        httpContext.Response.ContentType = "application/problem+json";
+
+        var retryAfter = "10";
+        if (lease.TryGetMetadata(MetadataName.RetryAfter, out var retryAfterValue))
+        {
+            retryAfter = retryAfterValue.TotalSeconds.ToString("0");
+        }
+
+        var problem = new HttpValidationProblemDetails
+        {
+            Type = "https://tools.ietf.org/html/rfc9110#section-15.5.3",
+            Title = "Too Many Requests",
+            Status = StatusCodes.Status429TooManyRequests,
+            Detail = "Rate limit exceeded. Please try again later.",
+            Instance = httpContext.Request.Path,
+            Extensions =
+            {
+                ["retryAfter"] = retryAfter
+            }
+        };
+
+        httpContext.Response.Headers.RetryAfter = retryAfter;
+        await httpContext.Response.WriteAsJsonAsync(problem, cancellationToken);
+    };
+});
+
 var app = builder.Build();
 
 // 6. MIDDLEWARE PIPELINE (ORDER MATTERS!)
@@ -121,6 +232,7 @@ app.UseHttpsRedirection();
 
 // Fourth: Routing (must come before auth)
 app.UseRouting();
+app.UseRateLimiter();
 
 // Fifth: Authentication (who are you?)
 app.UseAuthentication();
@@ -155,6 +267,9 @@ if (app.Environment.IsDevelopment())
             .AddDocument("v2", "API Version 2.0");
     });
 }
+
+app.MapHealthChecks("/health/live").DisableRateLimiting();
+app.MapHealthChecks("/health/ready").DisableRateLimiting();
 
 // 8. APPLICATION ENDPOINTS
 
