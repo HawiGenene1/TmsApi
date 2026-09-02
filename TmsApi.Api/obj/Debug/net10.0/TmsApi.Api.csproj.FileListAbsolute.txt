@@ -140,3 +140,4 @@ C:\Users\Hp\Documents\collection\TmsApi\TmsApi.Api\bin\Debug\net10.0\Microsoft.I
 C:\Users\Hp\Documents\collection\TmsApi\TmsApi.Api\bin\Debug\net10.0\Microsoft.IdentityModel.JsonWebTokens.dll
 C:\Users\Hp\Documents\collection\TmsApi\TmsApi.Api\bin\Debug\net10.0\Microsoft.IdentityModel.Logging.dll
 C:\Users\Hp\Documents\collection\TmsApi\TmsApi.Api\bin\Debug\net10.0\Microsoft.IdentityModel.Tokens.dll
+C:\Users\Hp\Documents\collection\TmsApi\TmsApi.Api\bin\Debug\net10.0\Microsoft.Extensions.Caching.Hybrid.dll
