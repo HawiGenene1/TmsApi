@@ -1,13 +1,17 @@
+using System.Text;
 using System.Threading.RateLimiting;
 using Asp.Versioning;  
 using FluentValidation;
 using MediatR;
 using Microsoft.AspNetCore.Authentication;
+using Microsoft.AspNetCore.Authentication.JwtBearer;
+using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.RateLimiting;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Caching.Hybrid;
 using Microsoft.Extensions.Options;
+using Microsoft.IdentityModel.Tokens;
 using Scalar.AspNetCore;
 using TmsApi;
 using TmsApi.Api.Handlers;
@@ -19,6 +23,7 @@ using TmsApi.Application.Enrollments.Commands;
 using TmsApi.Application.Interfaces;
 using TmsApi.Domain.Entities;
 using TmsApi.Filters;
+using TmsApi.Infrastructure.Identity;
 using TmsApi.Infrastructure.Persistence;
 using TmsApi.Infrastructure.Services;
 
@@ -58,12 +63,69 @@ builder.Host.UseDefaultServiceProvider(options =>
     options.ValidateOnBuild = true;
 });
 
-// 1. Register Authentication Services
+// 1. Register TmsDbContext
+builder.Services.AddDbContext<TmsDbContext>(options =>
+{
+    var dbContextOptions = options.UseNpgsql(builder.Configuration.GetConnectionString("TmsDatabase"))
+        .LogTo(Console.WriteLine, LogLevel.Information);
+
+    if (builder.Environment.IsDevelopment())
+    {
+        dbContextOptions.EnableSensitiveDataLogging();
+    }
+});
+
+// 2. Configure ASP.NET Core Identity
+builder.Services.AddIdentity<TmsUser, IdentityRole>(options =>
+{
+    options.Password.RequireDigit = true;
+    options.Password.RequireLowercase = true;
+    options.Password.RequireUppercase = true;
+    options.Password.RequireNonAlphanumeric = true;
+    options.Password.RequiredLength = 8;
+
+    options.Lockout.DefaultLockoutTimeSpan = TimeSpan.FromMinutes(15);
+    options.Lockout.MaxFailedAccessAttempts = 5;
+    options.Lockout.AllowedForNewUsers = true;
+
+    options.User.RequireUniqueEmail = true;
+})
+.AddEntityFrameworkStores<TmsDbContext>()
+.AddDefaultTokenProviders();
+
+// 3. Register TokenService
+builder.Services.AddScoped<ITokenService, TokenService>();
+
+// 4. Register Authentication Services (JWT Bearer default)
+var jwtKey = builder.Configuration["Jwt:Key"] ?? "A-Very-Long-Secret-Key-For-TMS-Auth-Stored-Safely-2026";
+var jwtIssuer = builder.Configuration["Jwt:Issuer"] ?? "TmsApi";
+var jwtAudience = builder.Configuration["Jwt:Audience"] ?? "TmsClient";
+
 builder.Services
-    .AddAuthentication("Training")
+    .AddAuthentication(options =>
+    {
+        options.DefaultAuthenticateScheme = JwtBearerDefaults.AuthenticationScheme;
+        options.DefaultChallengeScheme = JwtBearerDefaults.AuthenticationScheme;
+    })
+    .AddJwtBearer(options =>
+    {
+        options.RequireHttpsMetadata = false;
+        options.SaveToken = true;
+        options.TokenValidationParameters = new TokenValidationParameters
+        {
+            ValidateIssuer = true,
+            ValidateAudience = true,
+            ValidateLifetime = true,
+            ValidateIssuerSigningKey = true,
+            ValidIssuer = jwtIssuer,
+            ValidAudience = jwtAudience,
+            IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(jwtKey)),
+            ClockSkew = TimeSpan.Zero
+        };
+    })
     .AddScheme<AuthenticationSchemeOptions, TrainingAuthHandler>("Training", null);
 
-// 2. Add Authorization Services
+// 5. Add Authorization Services
 builder.Services.AddAuthorization();
 
 // Add MediatR and FluentValidation
@@ -80,34 +142,21 @@ builder.Services.AddTransient(typeof(IPipelineBehavior<,>), typeof(ValidationBeh
 builder.Services.AddExceptionHandler<GlobalExceptionHandler>();
 builder.Services.AddProblemDetails();
 
-// 3. Add Controllers and SignalR
-builder.Services.AddControllers();
+// 6. Add SignalR
 builder.Services.AddSignalR();
 
-// 4. Register PaymentOptions with validation
+// 7. Register PaymentOptions with validation
 builder.Services.AddOptions<PaymentOptions>()
     .BindConfiguration("Payments")
     .ValidateDataAnnotations()
     .ValidateOnStart();
 
-// 5. Register Services
+// 8. Register Services
 builder.Services.AddSingleton<EnrollmentWorker>();
 builder.Services.AddScoped<IInMemoryEnrollmentService, InMemoryEnrollmentService>();
 builder.Services.AddScoped<IEnrollmentService, EnrollmentService>();
 builder.Services.AddScoped<ICourseService, CourseService>();
 builder.Services.AddScoped<ICachedCourseService, CachedCourseService>();
-
-// Register TmsDbContext
-builder.Services.AddDbContext<TmsDbContext>(options =>
-{
-    var dbContextOptions = options.UseNpgsql(builder.Configuration.GetConnectionString("TmsDatabase"))
-        .LogTo(Console.WriteLine, LogLevel.Information);
-
-    if (builder.Environment.IsDevelopment())
-    {
-        dbContextOptions.EnableSensitiveDataLogging();
-    }
-});
 
 builder.Services.AddControllers(options =>
 {
@@ -316,6 +365,37 @@ using (var scope = app.Services.CreateScope())
 {
     var context = scope.ServiceProvider.GetRequiredService<TmsDbContext>();
     context.Database.Migrate();
+
+    var roleManager = scope.ServiceProvider.GetRequiredService<RoleManager<IdentityRole>>();
+    var userManager = scope.ServiceProvider.GetRequiredService<UserManager<TmsUser>>();
+
+    foreach (var role in new[] { "Admin", "Instructor", "Student" })
+    {
+        if (!roleManager.RoleExistsAsync(role).GetAwaiter().GetResult())
+        {
+            roleManager.CreateAsync(new IdentityRole(role)).GetAwaiter().GetResult();
+        }
+    }
+
+    var instructorEmail = "leul.instructor@cotbe.edu.et";
+    var instructor = userManager.FindByEmailAsync(instructorEmail).GetAwaiter().GetResult();
+    if (instructor == null)
+    {
+        instructor = new TmsUser
+        {
+            UserName = instructorEmail,
+            Email = instructorEmail,
+            EmailConfirmed = true,
+            FirstName = "Leul",
+            LastName = "Gebre",
+            Department = "Computer Science"
+        };
+        var createResult = userManager.CreateAsync(instructor, "SecurePass123!").GetAwaiter().GetResult();
+        if (createResult.Succeeded)
+        {
+            userManager.AddToRoleAsync(instructor, "Instructor").GetAwaiter().GetResult();
+        }
+    }
 
     if (!context.Students.Any())
     {
