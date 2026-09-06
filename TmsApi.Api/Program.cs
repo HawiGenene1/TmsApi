@@ -5,6 +5,7 @@ using FluentValidation;
 using MediatR;
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.RateLimiting;
@@ -26,11 +27,21 @@ using TmsApi.Filters;
 using TmsApi.Infrastructure.Identity;
 using TmsApi.Infrastructure.Persistence;
 using TmsApi.Infrastructure.Services;
+using TmsApi.Api.Authorization;
+
+
 
 var builder = WebApplication.CreateBuilder(args);
 
 // ADD THIS - Required for UseExceptionHandler() to work in .NET 10
 builder.Services.AddProblemDetails();
+
+// Add authorization policies
+builder.Services.AddAuthorizationBuilder()
+    .AddPolicy("CanEditCourse", policy =>
+        policy.Requirements.Add(new CourseInstructorRequirement()));
+
+builder.Services.AddSingleton<IAuthorizationHandler, CourseInstructorHandler>();
 
 // Add API Versioning
 builder.Services.AddApiVersioning(options =>
@@ -67,6 +78,7 @@ builder.Host.UseDefaultServiceProvider(options =>
 builder.Services.AddDbContext<TmsDbContext>(options =>
 {
     var dbContextOptions = options.UseNpgsql(builder.Configuration.GetConnectionString("TmsDatabase"))
+        .ConfigureWarnings(w => w.Ignore(Microsoft.EntityFrameworkCore.Diagnostics.RelationalEventId.PendingModelChangesWarning))
         .LogTo(Console.WriteLine, LogLevel.Information);
 
     if (builder.Environment.IsDevelopment())
@@ -194,44 +206,32 @@ builder.Services.AddHybridCache(options =>
 // Add Rate Limiting
 builder.Services.AddRateLimiter(options =>
 {
-    // Global limiter - tier-aware token bucket
-    options.GlobalLimiter = PartitionedRateLimiter.Create<HttpContext, string>(httpContext =>
+    // Login endpoint - 5 attempts per minute
+    options.AddPolicy("LoginPolicy", httpContext =>
     {
-        var (partitionKey, tier) = ApiKeyResolver.Resolve(httpContext);
-
-        return tier switch
+        var key = httpContext.Connection.RemoteIpAddress?.ToString() ?? "unknown";
+        return RateLimitPartition.GetFixedWindowLimiter(key, _ => new FixedWindowRateLimiterOptions
         {
-            ApiKeyTier.Paid => RateLimitPartition.GetTokenBucketLimiter($"paid:{partitionKey}",
-                _ => new TokenBucketRateLimiterOptions
-                {
-                    TokenLimit = 200,
-                    TokensPerPeriod = 100,
-                    ReplenishmentPeriod = TimeSpan.FromSeconds(10),
-                    QueueLimit = 0,
-                    AutoReplenishment = true
-                }),
-
-            ApiKeyTier.Free => RateLimitPartition.GetTokenBucketLimiter($"free:{partitionKey}",
-                _ => new TokenBucketRateLimiterOptions
-                {
-                    TokenLimit = 50,
-                    TokensPerPeriod = 25,
-                    ReplenishmentPeriod = TimeSpan.FromSeconds(10),
-                    QueueLimit = 0,
-                    AutoReplenishment = true
-                }),
-
-            _ => RateLimitPartition.GetTokenBucketLimiter($"anon:{partitionKey}",
-                _ => new TokenBucketRateLimiterOptions
-                {
-                    TokenLimit = 10,
-                    TokensPerPeriod = 5,
-                    ReplenishmentPeriod = TimeSpan.FromSeconds(10),
-                    QueueLimit = 0,
-                    AutoReplenishment = true
-                })
-        };
+            PermitLimit = 5,
+            Window = TimeSpan.FromMinutes(1),
+            QueueLimit = 0
+        });
     });
+
+    // Default policy
+    options.GlobalLimiter = PartitionedRateLimiter.Create<HttpContext, string>(
+        httpContext =>
+        {
+            var key = httpContext.User.Identity?.Name ?? httpContext.Connection.RemoteIpAddress?.ToString() ?? "anonymous";
+            return RateLimitPartition.GetTokenBucketLimiter(key, _ => new TokenBucketRateLimiterOptions
+            {
+                TokenLimit = 100,
+                TokensPerPeriod = 50,
+                ReplenishmentPeriod = TimeSpan.FromSeconds(10),
+                QueueLimit = 0
+            });
+        }
+    );
 
     // Concurrency limiter for transcript endpoint
     options.AddConcurrencyLimiter("transcripts", opt =>
@@ -287,6 +287,8 @@ var app = builder.Build();
 
 // 6. MIDDLEWARE PIPELINE (ORDER MATTERS!)
 
+// Add security headers middleware after exception handling
+app.UseMiddleware<SecurityHeadersMiddleware>();
 // First: Logging middleware (wraps everything)
 app.UseMiddleware<RequestLoggingMiddleware>();
 

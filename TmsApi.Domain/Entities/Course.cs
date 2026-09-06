@@ -6,6 +6,7 @@ public class Course
     public required string Code { get; set; }
     public required string Title { get; set; }
     public int MaxCapacity { get; set; }
+    public string? InstructorId { get; set; }  // NEW: User ID of assigned instructor
 
     // Navigation properties
     public ICollection<Enrollment> Enrollments { get; set; } = new List<Enrollment>();
