@@ -9,6 +9,7 @@ namespace TmsApi.Api.Controllers.V2;
 
 [ApiController]
 [Route("api/v{version:apiVersion}/enrollments")]
+
 [ApiVersion("2.0")]
 public class EnrollmentsController : ControllerBase
 {
@@ -38,16 +39,19 @@ public class EnrollmentsController : ControllerBase
                     title: "Course not found",
                     detail: error.Message,
                     type: "https://tms.local/errors/course_not_found"),
+
                 "course_full" => Problem(
                     statusCode: StatusCodes.Status409Conflict,
                     title: "Course is full",
                     detail: error.Message,
                     type: "https://tms.local/errors/course_full"),
+
                 "already_enrolled" => Problem(
                     statusCode: StatusCodes.Status409Conflict,
                     title: "Already enrolled",
                     detail: error.Message,
                     type: "https://tms.local/errors/already_enrolled"),
+
                 _ => Problem(
                     statusCode: StatusCodes.Status400BadRequest,
                     title: "Enrollment failed",
@@ -59,7 +63,7 @@ public class EnrollmentsController : ControllerBase
     [HttpGet("{studentId}/schedule")]
     public async Task<IActionResult> GetSchedule(int studentId, CancellationToken ct)
     {
-        var schedule = await _mediator.Send(new GetStudentScheduleQuery(studentId), ct);
-        return Ok(schedule);
+        // TODO: Implement GetStudentScheduleQuery
+        return Ok(new { studentId, message = "Schedule will be implemented in Exercise 2" });
     }
 }

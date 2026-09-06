@@ -1,17 +1,19 @@
+using System.Threading.RateLimiting;
 using Asp.Versioning;  
 using FluentValidation;
 using MediatR;
 using Microsoft.AspNetCore.Authentication;
+using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.RateLimiting;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Caching.Hybrid;
 using Microsoft.Extensions.Options;
 using Scalar.AspNetCore;
-using System.Threading.RateLimiting;
-using TmsApi.Api.RateLimiting;
 using TmsApi;
 using TmsApi.Api.Handlers;
+using TmsApi.Api.Hubs;
 using TmsApi.Api.Middleware;
+using TmsApi.Api.RateLimiting;
 using TmsApi.Application.Behaviors;
 using TmsApi.Application.Enrollments.Commands;
 using TmsApi.Application.Interfaces;
@@ -68,8 +70,6 @@ builder.Services.AddAuthorization();
 builder.Services.AddMediatR(cfg =>
     cfg.RegisterServicesFromAssembly(typeof(EnrollStudentHandler).Assembly));
 
-builder.Services.AddHealthChecks();
-
 builder.Services.AddValidatorsFromAssembly(typeof(EnrollStudentValidator).Assembly);
 
 // Register pipeline behaviors (Logging FIRST, Validation SECOND)
@@ -80,8 +80,9 @@ builder.Services.AddTransient(typeof(IPipelineBehavior<,>), typeof(ValidationBeh
 builder.Services.AddExceptionHandler<GlobalExceptionHandler>();
 builder.Services.AddProblemDetails();
 
-// 3. Add Controllers
+// 3. Add Controllers and SignalR
 builder.Services.AddControllers();
+builder.Services.AddSignalR();
 
 // 4. Register PaymentOptions with validation
 builder.Services.AddOptions<PaymentOptions>()
@@ -95,16 +96,6 @@ builder.Services.AddScoped<IInMemoryEnrollmentService, InMemoryEnrollmentService
 builder.Services.AddScoped<IEnrollmentService, EnrollmentService>();
 builder.Services.AddScoped<ICourseService, CourseService>();
 builder.Services.AddScoped<ICachedCourseService, CachedCourseService>();
-
-// Add HybridCache
-builder.Services.AddHybridCache(options =>
-{
-    options.DefaultEntryOptions = new HybridCacheEntryOptions
-    {
-        Expiration = TimeSpan.FromMinutes(10),
-        LocalCacheExpiration = TimeSpan.FromMinutes(2)
-    };
-});
 
 // Register TmsDbContext
 builder.Services.AddDbContext<TmsDbContext>(options =>
@@ -123,6 +114,34 @@ builder.Services.AddControllers(options =>
     options.Filters.Add<AuditLogFilter>();
 });
 
+// Load allowed origins from appsettings.Development.json
+var allowedOrigins = builder.Configuration
+    .GetSection("AllowedOrigins")
+    .Get<string[]>() ?? ["http://localhost:4200"];
+
+// Register the CORS policy in the Dependency Injection container
+builder.Services.AddCors(options =>
+{
+    options.AddPolicy("TmsClient", policy =>
+    {
+        policy.WithOrigins(allowedOrigins)
+              .AllowAnyHeader()
+              .AllowAnyMethod()
+              .AllowCredentials()  // Vital for HttpOnly auth cookies
+              .SetPreflightMaxAge(TimeSpan.FromMinutes(10));
+    });
+});
+
+// Add HybridCache
+builder.Services.AddHybridCache(options =>
+{
+    options.DefaultEntryOptions = new HybridCacheEntryOptions
+    {
+        Expiration = TimeSpan.FromMinutes(10),
+        LocalCacheExpiration = TimeSpan.FromMinutes(2)
+    };
+});
+
 // Add Rate Limiting
 builder.Services.AddRateLimiter(options =>
 {
@@ -133,8 +152,7 @@ builder.Services.AddRateLimiter(options =>
 
         return tier switch
         {
-            ApiKeyTier.Paid => RateLimitPartition.GetTokenBucketLimiter(
-                $"paid:{partitionKey}",
+            ApiKeyTier.Paid => RateLimitPartition.GetTokenBucketLimiter($"paid:{partitionKey}",
                 _ => new TokenBucketRateLimiterOptions
                 {
                     TokenLimit = 200,
@@ -143,8 +161,8 @@ builder.Services.AddRateLimiter(options =>
                     QueueLimit = 0,
                     AutoReplenishment = true
                 }),
-            ApiKeyTier.Free => RateLimitPartition.GetTokenBucketLimiter(
-                $"free:{partitionKey}",
+
+            ApiKeyTier.Free => RateLimitPartition.GetTokenBucketLimiter($"free:{partitionKey}",
                 _ => new TokenBucketRateLimiterOptions
                 {
                     TokenLimit = 50,
@@ -153,8 +171,8 @@ builder.Services.AddRateLimiter(options =>
                     QueueLimit = 0,
                     AutoReplenishment = true
                 }),
-            _ => RateLimitPartition.GetTokenBucketLimiter(
-                $"anon:{partitionKey}",
+
+            _ => RateLimitPartition.GetTokenBucketLimiter($"anon:{partitionKey}",
                 _ => new TokenBucketRateLimiterOptions
                 {
                     TokenLimit = 10,
@@ -169,8 +187,8 @@ builder.Services.AddRateLimiter(options =>
     // Concurrency limiter for transcript endpoint
     options.AddConcurrencyLimiter("transcripts", opt =>
     {
-        opt.PermitLimit = 5;
-        opt.QueueLimit = 20;
+        opt.PermitLimit = 5;      // Maximum 5 in-flight transcripts
+        opt.QueueLimit = 20;      // Queue up to 20 more
         opt.QueueProcessingOrder = QueueProcessingOrder.OldestFirst;
     });
 
@@ -232,7 +250,12 @@ app.UseHttpsRedirection();
 
 // Fourth: Routing (must come before auth)
 app.UseRouting();
+
+// Rate limiting (after routing, before auth)
 app.UseRateLimiter();
+
+// CORS (must be after UseRouting and before auth/endpoint mapping)
+app.UseCors("TmsClient");
 
 // Fifth: Authentication (who are you?)
 app.UseAuthentication();
@@ -242,23 +265,11 @@ app.UseAuthorization();
 
 app.UseMiddleware<V1DeprecationMiddleware>();
 
-if (app.Environment.IsDevelopment())
-{
-    app.MapScalarApiReference(options =>
-    {
-        options.WithTitle("TMS API Reference")
-            .WithTheme(ScalarTheme.DeepSpace)
-            .WithDefaultHttpClient(ScalarTarget.CSharp, ScalarClient.HttpClient)
-            .AddDocument("v1", "API Version 1.0")
-            .AddDocument("v2", "API Version 2.0");
-    });
-}
-
 // 7. ENVIRONMENT-AWARE ENDPOINTS
 if (app.Environment.IsDevelopment())
 {
     app.MapOpenApi();
-    app.MapScalarApiReference(options =>
+    app.MapScalarApiReference("/Scalar/V1", options =>
     {
         options.WithTitle("TMS API Reference")
             .WithTheme(ScalarTheme.DeepSpace)
@@ -267,9 +278,6 @@ if (app.Environment.IsDevelopment())
             .AddDocument("v2", "API Version 2.0");
     });
 }
-
-app.MapHealthChecks("/health/live").DisableRateLimiting();
-app.MapHealthChecks("/health/ready").DisableRateLimiting();
 
 // 8. APPLICATION ENDPOINTS
 
@@ -349,6 +357,9 @@ app.MapGet("/api/error", () =>
 {
     throw new TmsDatabaseException("Simulated database failure for ProblemDetails testing");
 });
+
+// SignalR Hub endpoint
+app.MapHub<TmsHub>("/hubs/tms").RequireCors("TmsClient");
 
 // Map controllers - THIS SHOULD BE LAST
 app.MapControllers();

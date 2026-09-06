@@ -30,7 +30,6 @@
 
   <ItemGroup>
     <Compile Include="..\*.cs" Exclude="..\Program.cs" />
-    <Compile Include="..\Controllers\**\*.cs" Link="Controllers\%(RecursiveDir)%(Filename)%(Extension)" />
     <Compile Include="..\Data\**\*.cs" Link="Data\%(RecursiveDir)%(Filename)%(Extension)" />
     <Compile Include="..\Dtos\**\*.cs" Link="Dtos\%(RecursiveDir)%(Filename)%(Extension)" />
     <Compile Include="..\Enrollment\**\*.cs" Link="Enrollment\%(RecursiveDir)%(Filename)%(Extension)" />

@@ -35,22 +35,26 @@ public class LoggingBehavior<TRequest, TResponse> : IPipelineBehavior<TRequest, 
         {
             var response = await next();
             stopwatch.Stop();
+
             _logger.LogInformation(
                 "Handled {RequestName} in {ElapsedMs}ms (cid={CorrelationId})",
                 requestName,
                 stopwatch.ElapsedMilliseconds,
                 correlationId);
+
             return response;
         }
         catch (Exception ex)
         {
             stopwatch.Stop();
+
             _logger.LogError(
                 ex,
                 "Failed {RequestName} after {ElapsedMs}ms (cid={CorrelationId})",
                 requestName,
                 stopwatch.ElapsedMilliseconds,
                 correlationId);
+
             throw;
         }
     }

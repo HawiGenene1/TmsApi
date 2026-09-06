@@ -3,14 +3,12 @@ using Microsoft.Extensions.Logging;
 using TmsApi.Application.Dtos;
 using TmsApi.Application.Interfaces;
 using TmsApi.Domain.Entities;
+using TmsApi.Infrastructure.Caching;
 
 namespace TmsApi.Infrastructure.Services;
 
 public class CachedCourseService : ICachedCourseService
 {
-    private const string SchemaVersion = "v2";
-    private const string CoursesTag = "courses";
-
     private readonly HybridCache _cache;
     private readonly ICourseService _courseService;
     private readonly ILogger<CachedCourseService> _logger;
@@ -27,7 +25,7 @@ public class CachedCourseService : ICachedCourseService
 
     public async Task<CourseDto> GetCourseAsync(string code, CancellationToken ct)
     {
-        var key = $"{SchemaVersion}:course:{code}";
+        var key = CacheKeys.Course(code);
         var dbHit = false;
 
         var dto = await _cache.GetOrCreateAsync(
@@ -36,7 +34,7 @@ public class CachedCourseService : ICachedCourseService
             {
                 dbHit = true;
                 _logger.LogInformation("Cache MISS for {Key} fetching from DB", key);
-                
+
                 var course = await _courseService.GetByCodeAsync(code, ct);
                 if (course is null)
                 {
@@ -50,9 +48,8 @@ public class CachedCourseService : ICachedCourseService
                     course.MaxCapacity,
                     course.Enrollments.Count);
             },
-            tags: [CoursesTag],
-            cancellationToken: ct
-        );
+            tags: [CacheKeys.CoursesTag],
+            cancellationToken: ct);
 
         if (!dbHit)
         {
@@ -64,7 +61,7 @@ public class CachedCourseService : ICachedCourseService
 
     public async Task<List<CourseDto>> GetAllCoursesAsync(CancellationToken ct)
     {
-        var key = $"{SchemaVersion}:courses:all";
+        var key = CacheKeys.CoursesAll;
         var dbHit = false;
 
         var list = await _cache.GetOrCreateAsync(
@@ -82,9 +79,8 @@ public class CachedCourseService : ICachedCourseService
                     c.MaxCapacity,
                     c.Enrollments.Count)).ToList();
             },
-            tags: [CoursesTag],
-            cancellationToken: ct
-        );
+            tags: [CacheKeys.CoursesTag],
+            cancellationToken: ct);
 
         if (!dbHit)
         {
@@ -96,7 +92,7 @@ public class CachedCourseService : ICachedCourseService
 
     public async Task InvalidateCourseCacheAsync(CancellationToken ct)
     {
-        _logger.LogInformation("Invalidating cache tag {Tag}", CoursesTag);
-        await _cache.RemoveByTagAsync(CoursesTag, ct);
+        _logger.LogInformation("Invalidating cache tag {Tag}", CacheKeys.CoursesTag);
+        await _cache.RemoveByTagAsync(CacheKeys.CoursesTag, ct);
     }
 }
