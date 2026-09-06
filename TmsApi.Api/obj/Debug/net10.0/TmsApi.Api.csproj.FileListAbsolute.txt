@@ -141,3 +141,5 @@ C:\Users\Hp\Documents\collection\TmsApi\TmsApi.Api\bin\Debug\net10.0\Microsoft.I
 C:\Users\Hp\Documents\collection\TmsApi\TmsApi.Api\bin\Debug\net10.0\Microsoft.IdentityModel.Logging.dll
 C:\Users\Hp\Documents\collection\TmsApi\TmsApi.Api\bin\Debug\net10.0\Microsoft.IdentityModel.Tokens.dll
 C:\Users\Hp\Documents\collection\TmsApi\TmsApi.Api\bin\Debug\net10.0\Microsoft.Extensions.Caching.Hybrid.dll
+C:\Users\Hp\Documents\collection\TmsApi\TmsApi.Api\bin\Debug\net10.0\BCrypt-Net-Next.dll
+C:\Users\Hp\Documents\collection\TmsApi\TmsApi.Api\bin\Debug\net10.0\Microsoft.AspNetCore.Identity.EntityFrameworkCore.dll

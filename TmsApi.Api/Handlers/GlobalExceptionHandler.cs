@@ -2,7 +2,6 @@ using System.Diagnostics;
 using FluentValidation;
 using Microsoft.AspNetCore.Diagnostics;
 using Microsoft.AspNetCore.Mvc;
-using TmsApi.Application.Common;
 
 namespace TmsApi.Api.Handlers;
 
@@ -60,6 +59,7 @@ public class GlobalExceptionHandler : IExceptionHandler
 
                 httpContext.Response.StatusCode = StatusCodes.Status500InternalServerError;
                 httpContext.Response.ContentType = "application/problem+json";
+
                 await httpContext.Response.WriteAsJsonAsync(problem, cancellationToken);
                 return true;
         }

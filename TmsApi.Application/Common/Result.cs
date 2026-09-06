@@ -4,6 +4,7 @@ public readonly record struct Result<TValue, TError>
 {
     private readonly TValue? _value;
     private readonly TError? _error;
+
     public bool IsSuccess { get; }
 
     private Result(TValue value)
@@ -21,6 +22,7 @@ public readonly record struct Result<TValue, TError>
     }
 
     public static Result<TValue, TError> Success(TValue value) => new(value);
+
     public static Result<TValue, TError> Failure(TError error) => new(error);
 
     public TValue Value => IsSuccess

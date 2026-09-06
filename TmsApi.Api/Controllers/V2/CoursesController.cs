@@ -1,7 +1,6 @@
 using Asp.Versioning;
 using Microsoft.AspNetCore.Mvc;
-using Microsoft.EntityFrameworkCore;
-using TmsApi.Infrastructure.Persistence;
+using TmsApi.Application.Interfaces;
 
 namespace TmsApi.Api.Controllers.V2;
 
@@ -10,11 +9,11 @@ namespace TmsApi.Api.Controllers.V2;
 [ApiVersion("2.0")]
 public class CoursesController : ControllerBase
 {
-    private readonly TmsDbContext _context;
+    private readonly ICachedCourseService _cachedCourseService;
 
-    public CoursesController(TmsDbContext context)
+    public CoursesController(ICachedCourseService cachedCourseService)
     {
-        _context = context;
+        _cachedCourseService = cachedCourseService;
     }
 
     [HttpGet]
@@ -26,10 +25,12 @@ public class CoursesController : ControllerBase
         page = Math.Max(1, page);
         pageSize = Math.Clamp(pageSize, 1, 50);
 
-        var baseQuery = _context.Courses.AsNoTracking();
-        var totalCount = await baseQuery.CountAsync(ct);
+        // Get all courses from cache
+        var allCourses = await _cachedCourseService.GetAllCoursesAsync(ct);
+        var totalCount = allCourses.Count;
 
-        var rows = await baseQuery
+        // Apply pagination in memory
+        var rows = allCourses
             .OrderBy(c => c.Title)
             .Skip((page - 1) * pageSize)
             .Take(pageSize)
@@ -39,9 +40,9 @@ public class CoursesController : ControllerBase
                 c.Title,
                 c.Code,
                 c.MaxCapacity,
-                EnrollmentCount = c.Enrollments.Count
+                c.EnrollmentCount
             })
-            .ToListAsync(ct);
+            .ToList();
 
         var totalPages = (int)Math.Ceiling(totalCount / (double)pageSize);
         var hasNext = page < totalPages;

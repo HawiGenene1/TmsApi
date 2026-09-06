@@ -24,6 +24,7 @@ public class ValidationBehavior<TRequest, TResponse> : IPipelineBehavior<TReques
         }
 
         var context = new ValidationContext<TRequest>(request);
+
         var failures = _validators
             .Select(v => v.Validate(context))
             .SelectMany(result => result.Errors)
